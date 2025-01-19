@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  flask-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5000"
+    volumes:
+      - "./data:/app/data"
+      - "./demo/src/main/resources:/app/demo/src/main/resources"
+    environment:
+      - FLASK_APP=mse_scraper_flask.py
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  spring-api:
+    build:
+      context: ./demo
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./demo:/usr/src/app
+
+    depends_on:
+      flask-api:
+        condition: service_healthy
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      spring-api:
+        condition: service_healthy
